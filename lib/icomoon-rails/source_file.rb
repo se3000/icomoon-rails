@@ -12,19 +12,19 @@ class SourceFile < Thor
 
   desc 'move', 'move source files to vendor/assets'
   def move
-    self.destination_root = 'vendor/assets'
+    self.destination_root = @extract_path
     copy_file "#{@extract_path}/style.css", "stylesheets/#{@name}/style.css"
     if File.exist? "#{@extract_path}/lte-ie7.js"
       copy_file "#{@extract_path}/lte-ie7.js", "javascripts/#{@name}/lte-ie7.js"
     end
-    copy_file "#{@extract_path}/license.txt", "stylesheets/#{@name}/license.txt"
+    # copy_file "#{@extract_path}/license.txt", "stylesheets/#{@name}/license.txt"
     empty_directory "fonts/#{@name}"
     directory "#{@extract_path}/fonts", "fonts/#{@name}"
   end
 
   desc 'convert css to sass file', 'convert css to sass file by sass-convert'
   def convert
-    self.destination_root = 'vendor/assets'
+    self.destination_root = @extract_path
     inside destination_root do
       run "sass-convert -F css -T sass stylesheets/#{@name}/style.css stylesheets/#{@name}/style.css.sass"
       gsub_file "stylesheets/#{@name}/style.css.sass", "'fonts/", "'#{@name}/"
@@ -53,21 +53,20 @@ class SourceFile < Thor
     @extract_path ||= path
   end
 
-  def extract(file_path, output_path, pattern)
-    system "tar -x -f '#{file_path}' -C '#{output_path}' #{pattern}"
+  def extract(file_path, pattern)
+    system "unzip '#{file_path}' -d '#{self.class.source_root}/#{pattern}'"
   end
 
   def fetch_from_path(zip_file_path)
     zip_file_name = File.basename zip_file_path
-    pattern = File.basename zip_file_name, '.zip'
+    pattern = File.basename(zip_file_name, '.zip')
     set_archive_file zip_file_name
 
     in_root do
       say_status '       fetch', zip_file_path, :green
-      # FileUtils.mkdir_p self.class.source_root
       copy_file zip_file_path, @archive_file
       if File.exist? @archive_file
-        extract @archive_file, self.class.source_root, pattern
+        extract @archive_file, pattern
         FileUtils.rm_rf @archive_file
       end
     end
@@ -90,7 +89,7 @@ class SourceFile < Thor
       say_status '       fetch', github_download_url, :green
       get github_download_url, @archive_file
       if File.exist? @archive_file
-        extract @archive_file, self.class.source_root, nil
+        extract @archive_file, nil
         FileUtils.rm_rf @archive_file
       end
     end
